@@ -30,7 +30,7 @@ Clarinet.test({
 });
 
 Clarinet.test({
-    name: "Test awarding tokens by recycling centers",
+    name: "Test tiered rewards system",
     async fn(chain: Chain, accounts: Map<string, Account>) {
         const deployer = accounts.get('deployer')!;
         const center = accounts.get('wallet_1')!;
@@ -42,7 +42,15 @@ Clarinet.test({
                 [types.principal(center.address)],
                 deployer.address
             ),
-            // Award tokens
+            // Set user to gold tier (3)
+            Tx.contractCall('recycle-rewards', 'set-user-tier',
+                [
+                    types.principal(recycler.address),
+                    types.uint(3)
+                ],
+                deployer.address
+            ),
+            // Award base tokens (100)
             Tx.contractCall('recycle-rewards', 'award-tokens',
                 [
                     types.principal(recycler.address),
@@ -54,8 +62,9 @@ Clarinet.test({
         
         block.receipts[0].result.expectOk();
         block.receipts[1].result.expectOk();
+        block.receipts[2].result.expectOk();
         
-        // Check balance
+        // Check balance - should be 150 (100 * 1.5 for gold tier)
         let balanceBlock = chain.mineBlock([
             Tx.contractCall('recycle-rewards', 'get-token-balance',
                 [types.principal(recycler.address)],
@@ -63,6 +72,6 @@ Clarinet.test({
             )
         ]);
         
-        assertEquals(balanceBlock.receipts[0].result.expectOk(), types.uint(100));
+        assertEquals(balanceBlock.receipts[0].result.expectOk(), types.uint(150));
     }
 });
